@@ -1,0 +1,68 @@
+.pose-detail-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .back-button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .back-button:hover {
+    background-color: #2980b9;
+  }
+  
+  .pose-detail-container h1 {
+    font-size: 36px;
+    color: #2c3e50;
+    margin-bottom: 20px;
+  }
+  
+  .pose-detail-container p {
+    font-size: 18px;
+    color: #4b5563;
+    margin-bottom: 20px;
+  }
+  
+  .advantages-section,
+  .steps-section {
+    text-align: left;
+    margin-bottom: 30px;
+  }
+  
+  .advantages-section h2,
+  .steps-section h2 {
+    font-size: 24px;
+    color: #34495e;
+    margin-bottom: 10px;
+  }
+  
+  .advantages-section ul,
+  .steps-section ol {
+    font-size: 16px;
+    color: #7f8c8d;
+    padding-left: 20px;
+  }
+  
+  .start-exercise-button {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+  }
+  
+  .start-exercise-button:hover {
+    background-color: #219653;
+  }

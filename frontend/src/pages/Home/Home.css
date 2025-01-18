@@ -1,0 +1,141 @@
+.home-container {
+  min-height: 100vh;
+  background-color: white;
+  position: relative;
+}
+
+.main-content {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 48px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.illustration-container {
+  width: 50%;
+  padding-right: 48px;
+}
+
+.illustration-wrapper {
+  position: relative;
+}
+
+.illustration-image {
+  width: 100%;
+  max-width: 448px;
+  margin: 0 auto;
+  display: block;
+}
+
+.content-container {
+  width: 50%;
+}
+
+.explore-link {
+  display: inline-flex;
+  align-items: center;
+  background-color: #f3f4f6;
+  padding: 4px 16px;
+  border-radius: 9999px;
+  font-size: 14px;
+}
+
+.poses-link {
+  margin-left: 4px;
+  color: #2563eb;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.poses-link:hover {
+  color: #1d4ed8;
+}
+
+.arrow {
+  margin-left: 4px;
+}
+
+.main-heading {
+  margin-top: 24px;
+  font-size: 36px;
+  font-weight: bold;
+  color: #111827;
+  letter-spacing: -0.025em;
+}
+
+.description {
+  margin-top: 16px;
+  font-size: 18px;
+  color: #4b5563;
+  line-height: 1.625;
+}
+
+.cta-container {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.signup-button {
+  padding: 12px 24px;
+  background-color: #4945ff;
+  color: white;
+  font-weight: 600;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background-color 0.3s;
+}
+
+.signup-button:hover {
+  background-color: #1d4ed8;
+}
+
+.how-it-works {
+  color: #4945ff;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.how-it-works:hover {
+  color: #1d4ed8;
+}
+
+.background-gradient {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(to bottom right, #f5f3ff, white);
+  z-index: -1;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
+    padding: 24px 16px;
+  }
+
+  .illustration-container,
+  .content-container {
+    width: 100%;
+    padding-right: 0;
+  }
+
+  .illustration-container {
+    margin-bottom: 32px;
+  }
+
+  .main-heading {
+    font-size: 28px;
+  }
+
+  .description {
+    font-size: 16px;
+  }
+}
+  
