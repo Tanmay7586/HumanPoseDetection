@@ -16,8 +16,7 @@
 """Module contains the data types used in pose estimation."""
 
 import enum
-from typing import List, NamedTuple
-
+from typing import List, NamedTuple, Dict
 import numpy as np
 
 
@@ -69,6 +68,31 @@ class Person(NamedTuple):
   id: int = None
 
 
+# Define correct keypoints for each yoga pose
+CORRECT_POSES = {
+    "Tree Pose": {
+        BodyPart.LEFT_SHOULDER: Point(0.2, 0.3),
+        BodyPart.RIGHT_SHOULDER: Point(0.8, 0.3),
+        BodyPart.LEFT_HIP: Point(0.3, 0.6),
+        BodyPart.RIGHT_HIP: Point(0.7, 0.6),
+        BodyPart.LEFT_KNEE: Point(0.3, 0.8),
+        BodyPart.RIGHT_KNEE: Point(0.7, 0.8),
+        BodyPart.LEFT_ANKLE: Point(0.3, 0.95),
+        BodyPart.RIGHT_ANKLE: Point(0.7, 0.95),
+    },
+    "Downward Dog": {
+        BodyPart.LEFT_SHOULDER: Point(0.1, 0.2),
+        BodyPart.RIGHT_SHOULDER: Point(0.9, 0.2),
+        BodyPart.LEFT_HIP: Point(0.2, 0.5),
+        BodyPart.RIGHT_HIP: Point(0.8, 0.5),
+        BodyPart.LEFT_KNEE: Point(0.2, 0.7),
+        BodyPart.RIGHT_KNEE: Point(0.8, 0.7),
+        BodyPart.LEFT_ANKLE: Point(0.2, 0.9),
+        BodyPart.RIGHT_ANKLE: Point(0.8, 0.9),
+    }
+}
+
+
 def person_from_keypoints_with_scores(
     keypoints_with_scores: np.ndarray,
     image_height: float,
@@ -114,6 +138,27 @@ def person_from_keypoints_with_scores(
   person_score = np.average(scores_above_threshold)
 
   return Person(keypoints, bounding_box, person_score)
+
+
+def compare_pose(user_keypoints: List[KeyPoint], correct_pose: Dict[BodyPart, Point], threshold: float = 0.1) -> List[str]:
+  """Compares the user's keypoints with the correct pose and generates feedback.
+
+  Args:
+    user_keypoints: List of KeyPoint objects representing the user's pose.
+    correct_pose: Dictionary of BodyPart to Point representing the correct pose.
+    threshold: Maximum allowed deviation for a keypoint to be considered correct.
+
+  Returns:
+    A list of feedback messages indicating how to adjust the pose.
+  """
+  feedback = []
+  for keypoint in user_keypoints:
+    if keypoint.body_part in correct_pose:
+      correct_point = correct_pose[keypoint.body_part]
+      deviation = np.sqrt((keypoint.coordinate.x - correct_point.x) ** 2 + (keypoint.coordinate.y - correct_point.y) ** 2)
+      if deviation > threshold:
+        feedback.append(f"Adjust your {keypoint.body_part.name.lower()}.")
+  return feedback
 
 
 class Category(NamedTuple):
