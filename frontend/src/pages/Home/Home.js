@@ -1,8 +1,7 @@
 import React from "react";
-import Navbar from "../../Navbar";
+import { Link } from "react-router-dom";
 import "./Home.css";
 import yogaImage from "../../assets/gtea-tea.gif";
-import YogaPoses from "../Yoga/YogaPoses";
 
 const Home = () => {
   return (
@@ -21,23 +20,23 @@ const Home = () => {
         <div className="content-container">
           <div className="explore-link">
             Explore different poses.{" "}
-            <a href="#" className="poses-link">
-              Yoga & Gym Poses
+            <Link to="/start" className="poses-link">
+              Yoga Poses
               <span className="arrow">→</span>
-            </a>
+            </Link>
           </div>
 
           <h1 className="main-heading">
-            Perfect Your Poses with AI-Powered Posture Detection
+            Perfect Your Yoga Poses with AI-Powered Posture Detection
           </h1>
 
           <p className="description">
-            Get instant feedback on your yoga & gym posture and improve
-            alignment. With real-time feedback, you will receive immediate
-            insights on your posture during practice. Our AI-powered posture
-            analysis utilizes advanced technology to analyze and enhance your
-            alignment, making it suitable for all levels of experience—from
-            beginners to advanced practitioners.
+            Get instant feedback on your yoga posture and improve alignment.
+            With real-time feedback, you'll receive immediate insights on your
+            posture during practice. Our AI-powered posture analysis utilizes
+            advanced technology to analyze and enhance your alignment, making it
+            suitable for all levels of experience - from beginners to advanced
+            practitioners.
           </p>
 
           <div className="cta-container">
@@ -52,7 +51,6 @@ const Home = () => {
       </div>
 
       <div className="background-gradient"></div>
-      <YogaPoses/>
     </div>
   );
 };

@@ -5,17 +5,17 @@ import "./Navbar.css";
 const Navbar = () => {
   return (
     <div className="navbar">
-      <div className="logo">
+      <Link to="/" className="logo">
         <h2>PosturePerfect</h2>
-      </div>
+      </Link>
       <div className="nav-links">
         <Link to="/start" className="nav-link">
           Yoga Poses
         </Link>
-        <Link to="/about" className="nav-link">
+        <Link to="/howitworks" className="nav-link">
           How It Works
         </Link>
-        <Link to="/tutorials" className="nav-link">
+        <Link to="/signup" className="nav-link">
           Sign Up
         </Link>
       </div>

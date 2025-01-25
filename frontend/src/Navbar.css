@@ -29,3 +29,11 @@
 .nav-link:hover {
   color: #a0a0a0;
 }
+
+.logo {
+  text-decoration: none;
+}
+
+.logo:hover {
+  text-decoration: none;
+}
