@@ -9,6 +9,8 @@ import DropDown from "../../components/DropDown/DropDown";
 import { poseImages } from "../../utils/pose_images";
 import { POINTS, keypointConnections } from "../../utils/data";
 import { drawPoint, drawSegment } from "../../utils/helper";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../AuthContext";
 
 // Constants
 let skeletonColor = "rgb(255,255,255)";
@@ -23,13 +25,13 @@ let poseList = [
 ];
 
 let interval;
-
-// Flag variable to track when the pose is detected correctly
 let flag = false;
 
 function Yoga() {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [startingTime, setStartingTime] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -38,8 +40,27 @@ function Yoga() {
   const [currentPose, setCurrentPose] = useState("Tree");
   const [isStartPose, setIsStartPose] = useState(false);
   const [feedbackMessages, setFeedbackMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Update pose time and best performance
+  // Authentication check for starting yoga
+  const startYoga = () => {
+    if (!user) {
+      navigate("/signup");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setIsStartPose(true);
+    runMovenet()
+      .catch((err) => {
+        setError("Failed to initialize pose detection");
+        console.error(err);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  // Pose detection timing logic
   useEffect(() => {
     const timeDiff = (currentTime - startingTime) / 1000;
     if (flag) {
@@ -50,14 +71,14 @@ function Yoga() {
     }
   }, [currentTime]);
 
-  // Reset timers when pose changes
+  // Reset counters on pose change
   useEffect(() => {
     setCurrentTime(0);
     setPoseTime(0);
     setBestPerform(0);
   }, [currentPose]);
 
-  // Class mapping for pose classification
+  // Pose classification setup
   const CLASS_NO = {
     Chair: 0,
     Cobra: 1,
@@ -69,255 +90,236 @@ function Yoga() {
     Warrior: 7,
   };
 
-  // Helper functions for pose normalization
-  function get_center_point(landmarks, left_bodypart, right_bodypart) {
-    let left = tf.gather(landmarks, left_bodypart, 1);
-    let right = tf.gather(landmarks, right_bodypart, 1);
-    const center = tf.add(tf.mul(left, 0.5), tf.mul(right, 0.5));
-    return center;
-  }
+  // TensorFlow.js pose processing functions
+  const get_center_point = (landmarks, left_bodypart, right_bodypart) => {
+    const left = tf.gather(landmarks, left_bodypart, 1);
+    const right = tf.gather(landmarks, right_bodypart, 1);
+    return tf.add(tf.mul(left, 0.5), tf.mul(right, 0.5));
+  };
 
-  function get_pose_size(landmarks, torso_size_multiplier = 2.5) {
-    let hips_center = get_center_point(
+  const get_pose_size = (landmarks, torso_size_multiplier = 2.5) => {
+    const hips_center = get_center_point(
       landmarks,
       POINTS.LEFT_HIP,
       POINTS.RIGHT_HIP
     );
-    let shoulders_center = get_center_point(
+    const shoulders_center = get_center_point(
       landmarks,
       POINTS.LEFT_SHOULDER,
       POINTS.RIGHT_SHOULDER
     );
-    let torso_size = tf.norm(tf.sub(shoulders_center, hips_center));
+    const torso_size = tf.norm(tf.sub(shoulders_center, hips_center));
     let pose_center_new = get_center_point(
       landmarks,
       POINTS.LEFT_HIP,
       POINTS.RIGHT_HIP
     );
-    pose_center_new = tf.expandDims(pose_center_new, 1);
-    pose_center_new = tf.broadcastTo(pose_center_new, [1, 17, 2]);
-    let d = tf.gather(tf.sub(landmarks, pose_center_new), 0, 0);
-    let max_dist = tf.max(tf.norm(d, "euclidean", 0));
-    let pose_size = tf.maximum(
-      tf.mul(torso_size, torso_size_multiplier),
-      max_dist
+    pose_center_new = tf.broadcastTo(
+      tf.expandDims(pose_center_new, 1),
+      [1, 17, 2]
     );
-    return pose_size;
-  }
+    const d = tf.gather(tf.sub(landmarks, pose_center_new), 0, 0);
+    const max_dist = tf.max(tf.norm(d, "euclidean", 0));
+    return tf.maximum(tf.mul(torso_size, torso_size_multiplier), max_dist);
+  };
 
-  function normalize_pose_landmarks(landmarks) {
-    let pose_center = get_center_point(
+  const normalize_pose_landmarks = (landmarks) => {
+    const pose_center = get_center_point(
       landmarks,
       POINTS.LEFT_HIP,
       POINTS.RIGHT_HIP
     );
-    pose_center = tf.expandDims(pose_center, 1);
-    pose_center = tf.broadcastTo(pose_center, [1, 17, 2]);
-    landmarks = tf.sub(landmarks, pose_center);
-    let pose_size = get_pose_size(landmarks);
-    landmarks = tf.div(landmarks, pose_size);
-    return landmarks;
-  }
-
-  function landmarks_to_embedding(landmarks) {
-    landmarks = normalize_pose_landmarks(tf.expandDims(landmarks, 0));
-    let embedding = tf.reshape(landmarks, [1, 34]);
-    return embedding;
-  }
-
-  // Run MoveNet pose detection
-  const runMovenet = async () => {
-    const detectorConfig = {
-      modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER,
-    };
-    const detector = await poseDetection.createDetector(
-      poseDetection.SupportedModels.MoveNet,
-      detectorConfig
+    const centered_landmarks = tf.sub(
+      landmarks,
+      tf.broadcastTo(tf.expandDims(pose_center, 1), [1, 17, 2])
     );
-    console.log("MoveNet detector initialized:", detector);
-
-    const poseClassifier = await tf.loadLayersModel(
-      "https://models.s3.jp-tok.cloud-object-storage.appdomain.cloud/model.json"
-    );
-    console.log("Pose classifier model loaded successfully:", poseClassifier);
-
-    const countAudio = new Audio(count);
-    countAudio.loop = true;
-    interval = setInterval(() => {
-      detectPose(detector, poseClassifier, countAudio);
-    }, 100);
+    const pose_size = get_pose_size(centered_landmarks);
+    return tf.div(centered_landmarks, pose_size);
   };
 
-  // Detect pose and provide feedback
-  const detectPose = async (detector, poseClassifier, countAudio) => {
-    if (
-      typeof webcamRef.current !== "undefined" &&
-      webcamRef.current !== null &&
-      webcamRef.current.video.readyState === 4
-    ) {
-      // Capture image from webcam
-      const imageSrc = webcamRef.current.getScreenshot();
-      console.log("Webcam image captured:", imageSrc);
+  const landmarks_to_embedding = (landmarks) => {
+    return tf.reshape(
+      normalize_pose_landmarks(tf.expandDims(landmarks, 0)),
+      [1, 34]
+    );
+  };
 
-      // Convert base64 image to Blob
-      const blob = await fetch(imageSrc).then((res) => res.blob());
-      console.log("Image converted to Blob:", blob);
+  // Pose detection initialization
+  const runMovenet = async () => {
+    try {
+      const detector = await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet,
+        { modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER }
+      );
 
-      // Send image to backend
-      const formData = new FormData();
-      formData.append("image", blob, "webcam-image.png");
+      const poseClassifier = await tf.loadLayersModel(
+        "https://models.s3.jp-tok.cloud-object-storage.appdomain.cloud/model.json"
+      );
 
-      try {
-        console.log("Sending image to backend...");
-        const response = await fetch("http://localhost:5000/detect-pose", {
-          method: "POST",
-          body: formData,
-        });
+      const countAudio = new Audio(count);
+      countAudio.loop = true;
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("Backend response:", data);
-
-        // Update feedback messages
-        setFeedbackMessages(data.feedback || []);
-
-        // Draw skeleton and process pose classification
-        const pose = await detector.estimatePoses(webcamRef.current.video);
-        const ctx = canvasRef.current.getContext("2d");
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-        const keypoints = pose[0].keypoints;
-        let input = keypoints.map((keypoint) => {
-          if (keypoint.score > 0.4) {
-            if (
-              !(keypoint.name === "left_eye" || keypoint.name === "right_eye")
-            ) {
-              drawPoint(ctx, keypoint.x, keypoint.y, 8, "rgb(255,255,255)");
-              let connections = keypointConnections[keypoint.name];
-              try {
-                connections.forEach((connection) => {
-                  let conName = connection.toUpperCase();
-                  drawSegment(
-                    ctx,
-                    [keypoint.x, keypoint.y],
-                    [
-                      keypoints[POINTS[conName]].x,
-                      keypoints[POINTS[conName]].y,
-                    ],
-                    skeletonColor
-                  );
-                });
-              } catch (err) {
-                console.error(err);
-              }
-            }
-          }
-          return [keypoint.x, keypoint.y];
-        });
-
-        const processedInput = landmarks_to_embedding(input);
-        const classification = poseClassifier.predict(processedInput);
-
-        classification.array().then((data) => {
-          const classNo = CLASS_NO[currentPose];
-          if (data[0][classNo] > 0.97) {
-            if (!flag) {
-              countAudio.play();
-              setStartingTime(new Date(Date()).getTime());
-              flag = true;
-            }
-            setCurrentTime(new Date(Date()).getTime());
-            skeletonColor = "rgb(0,255,0)";
-          } else {
-            flag = false;
-            skeletonColor = "rgb(255,255,255)";
-            countAudio.pause();
-            countAudio.currentTime = 0;
-          }
-        });
-      } catch (err) {
-        console.error("Error in detectPose:", err);
-      }
+      interval = setInterval(() => {
+        detectPose(detector, poseClassifier, countAudio);
+      }, 100);
+    } catch (err) {
+      setError("Failed to initialize pose detection");
+      console.error(err);
     }
   };
 
-  // Start yoga pose detection
-  function startYoga() {
-    setIsStartPose(true);
-    runMovenet();
-  }
+  // Pose detection and feedback logic
+  const detectPose = async (detector, poseClassifier, countAudio) => {
+    try {
+      if (!webcamRef.current?.video) return;
 
-  // Stop yoga pose detection
-  function stopPose() {
-    setIsStartPose(false);
-    clearInterval(interval);
-  }
+      const imageSrc = webcamRef.current.getScreenshot();
+      const blob = await fetch(imageSrc).then((res) => res.blob());
+      const formData = new FormData();
+      formData.append("image", blob, "webcam-image.png");
 
-  // Render UI
+      const response = await fetch("http://localhost:5000/detect-pose", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok)
+        throw new Error(`HTTP error! Status: ${response.status}`);
+
+      const data = await response.json();
+      setFeedbackMessages(data.feedback || []);
+
+      const pose = await detector.estimatePoses(webcamRef.current.video);
+      const ctx = canvasRef.current.getContext("2d");
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+      pose[0].keypoints.forEach((keypoint) => {
+        if (
+          keypoint.score > 0.4 &&
+          !["left_eye", "right_eye"].includes(keypoint.name)
+        ) {
+          drawPoint(ctx, keypoint.x, keypoint.y, 8, "rgb(255,255,255)");
+          keypointConnections[keypoint.name]?.forEach((connection) => {
+            const conName = connection.toUpperCase();
+            const targetPoint = pose[0].keypoints[POINTS[conName]];
+            if (targetPoint) {
+              drawSegment(
+                ctx,
+                [keypoint.x, keypoint.y],
+                [targetPoint.x, targetPoint.y],
+                skeletonColor
+              );
+            }
+          });
+        }
+      });
+
+      const input = pose[0].keypoints.map((kp) => [kp.x, kp.y]);
+      const prediction = await poseClassifier
+        .predict(landmarks_to_embedding(input))
+        .array();
+
+      if (prediction[0][CLASS_NO[currentPose]] > 0.97) {
+        if (!flag) {
+          countAudio.play();
+          setStartingTime(Date.now());
+          flag = true;
+        }
+        setCurrentTime(Date.now());
+        skeletonColor = "rgb(0,255,0)";
+      } else {
+        flag = false;
+        skeletonColor = "rgb(255,255,255)";
+        countAudio.pause();
+        countAudio.currentTime = 0;
+      }
+    } catch (err) {
+      console.error("Pose detection error:", err);
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearInterval(interval);
+      tf.disposeVariables();
+    };
+  }, []);
+
+  // UI Components
   if (isStartPose) {
     return (
       <div className="yoga-container">
         <div className="performance-container">
           <div className="pose-performance">
-            <h4>Pose Time: {poseTime.toFixed(1)}s</h4>
+            <h4>Current: {poseTime.toFixed(1)}s</h4>
           </div>
           <div className="pose-performance">
             <h4>Best: {bestPerform.toFixed(1)}s</h4>
           </div>
         </div>
+
         <div className="webcam-and-pose-container">
           <div className="webcam-container">
             <Webcam
-              width="640px"
-              height="480px"
-              id="webcam"
               ref={webcamRef}
-              style={{
-                padding: "0px",
-              }}
+              width={640}
+              height={480}
+              screenshotFormat="image/jpeg"
+              videoConstraints={{ facingMode: "user" }}
+              mirrored
             />
             <canvas
               ref={canvasRef}
-              id="my-canvas"
-              width="640px"
-              height="480px"
-              style={{
-                position: "absolute",
-                zIndex: 1,
-              }}
+              width={640}
+              height={480}
+              style={{ position: "absolute", left: 0, top: 0 }}
             />
           </div>
-          <div className="pose-image-container">
-            <img src={poseImages[currentPose]} className="pose-img" />
+
+          <div className="pose-reference">
+            <img
+              src={poseImages[currentPose]}
+              alt={`${currentPose} Pose Example`}
+              className="pose-img"
+            />
           </div>
         </div>
+
         <div className="feedback-container">
-          {feedbackMessages.map((message, index) => (
-            <div key={index} className="feedback-message">
-              {message}
+          {feedbackMessages.map((msg, i) => (
+            <div key={i} className="feedback-message">
+              {msg}
             </div>
           ))}
         </div>
-        <button onClick={stopPose} className="secondary-btn">
-          Stop Pose
+
+        <button
+          onClick={() => {
+            setIsStartPose(false);
+            clearInterval(interval);
+          }}
+          className="secondary-btn"
+        >
+          Stop Session
         </button>
+
+        {error && <div className="error-message">{error}</div>}
+        {loading && <div className="loading-overlay">Initializing...</div>}
       </div>
     );
   }
 
   return (
-    <div className="yoga-container">
+    <div className="yoga-selection">
       <DropDown
         poseList={poseList}
         currentPose={currentPose}
         setCurrentPose={setCurrentPose}
       />
       <Instructions currentPose={currentPose} />
-      <button onClick={startYoga} className="secondary-btn">
-        Start Pose
+      <button onClick={startYoga} className="primary-btn" disabled={loading}>
+        {loading ? "Initializing..." : "Start Practice"}
       </button>
     </div>
   );

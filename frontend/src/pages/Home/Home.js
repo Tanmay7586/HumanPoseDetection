@@ -1,9 +1,13 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../AuthContext"; // Corrected import path
 import "./Home.css";
 import yogaImage from "../../assets/gtea-tea.gif";
 
 const Home = () => {
+  const { user, logout } = useAuth(); // Get logout function
+  const navigate = useNavigate();
+
   return (
     <div className="home-container">
       <div className="main-content">
@@ -40,12 +44,24 @@ const Home = () => {
           </p>
 
           <div className="cta-container">
-            <Link to="/signup" className="signup-button">
-              Sign Up
-            </Link>
-            <a href="#" className="how-it-works">
+            {!user ? (
+              <Link to="/signup" className="signup-button">
+                Sign Up
+              </Link>
+            ) : (
+              <button
+                className="logout-button"
+                onClick={() => {
+                  logout();
+                  navigate("/");
+                }}
+              >
+                Logout
+              </button>
+            )}
+            <Link to="/howitworks" className="how-it-works">
               How it Works →
-            </a>
+            </Link>
           </div>
         </div>
       </div>

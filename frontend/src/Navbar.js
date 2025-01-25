@@ -1,42 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "./AuthContext";
 import "./Navbar.css";
 
 const Navbar = () => {
+  const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState(null); // Initialize with null
   const navigate = useNavigate();
+  const dropdownRef = useRef(null);
 
-  useEffect(() => {
-    // Safely get and parse user data
-    const rawUserData = localStorage.getItem("userData");
-
-    try {
-      const userData = rawUserData ? JSON.parse(rawUserData) : null;
-      if (userData?.email) {
-        setUserEmail(userData.email);
-      }
-    } catch (error) {
-      console.error("Error parsing user data:", error);
-      localStorage.removeItem("userData"); // Clear invalid data
+  const toggleDropdown = (e) => {
+    if (e) {
+      e.stopPropagation();
     }
+    setIsDropdownOpen((prev) => !prev);
+  };
+
+  // Click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const getInitials = () => {
-    if (!userEmail) return "GU";
-    const usernamePart = userEmail.split("@")[0];
+    if (!user?.email) return "GU";
+    const usernamePart = user.email.split("@")[0];
     return usernamePart[0].toUpperCase();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userData");
-    setUserEmail(null); // Clear local state
-    navigate("/");
-  };
-
   return (
-    <div className="navbar">
+    <div className="navbar1">
+      <div className="navbar" >
       <Link to="/" className="logo">
         <h2>PosturePerfect</h2>
       </Link>
@@ -47,15 +47,12 @@ const Navbar = () => {
         <Link to="/howitworks" className="nav-link">
           How It Works
         </Link>
-
-        {userEmail ? (
-          <div className="user-menu">
-            <div
-              className="user-initials"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            >
+        {user ? (
+          <div className="user-menu" ref={dropdownRef}>
+            <div className="user-initials" onMouseDown={(e) => toggleDropdown(e)}>
               {getInitials()}
             </div>
+
             {isDropdownOpen && (
               <div className="dropdown-menu">
                 <Link
@@ -65,7 +62,14 @@ const Navbar = () => {
                 >
                   Reset Password
                 </Link>
-                <div className="dropdown-item" onClick={handleLogout}>
+                <div
+                  className="dropdown-item"
+                  onClick={() => {
+                    logout();
+                    setIsDropdownOpen(false);
+                    navigate("/");
+                  }}
+                >
                   Logout
                 </div>
               </div>
@@ -77,6 +81,7 @@ const Navbar = () => {
           </Link>
         )}
       </div>
+    </div>
     </div>
   );
 };
