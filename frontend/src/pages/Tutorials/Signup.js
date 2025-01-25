@@ -12,6 +12,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  console.log("API URL:", process.env.REACT_APP_API_URL);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -29,15 +31,14 @@ export default function Auth() {
         : { email, password, confirmPassword };
 
       const response = await axios.post(
-        process.env.REACT_APP_API_URL + endpoint,
+        `${process.env.REACT_APP_API_URL}${endpoint}`,
         payload
       );
-
       // Store user data and token
       localStorage.setItem("userData", JSON.stringify(response.data.user));
       localStorage.setItem("authToken", response.data.token);
 
-      navigate("/dashboard");
+      navigate("/");
     } catch (err) {
       const errorMessage =
         err.response?.data?.message ||

@@ -40,9 +40,9 @@ const Home = () => {
           </p>
 
           <div className="cta-container">
-            <a href="#" className="signup-button">
+            <Link to="/signup" className="signup-button">
               Sign Up
-            </a>
+            </Link>
             <a href="#" className="how-it-works">
               How it Works →
             </a>
